@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+/* ---------- Custom Colors ---------- */
+@theme {
+  /* Brand Colors */
+  --color-brand: #4F46E5;         /* Indigo 600 */
+  --color-brand-deep: #4338CA;    /* Indigo 700 */
+  --color-brand-light: #EEF2FF;   /* Indigo 50 */
+  
+  /* Pink Colors */
+  --color-pink: #EC4899;          /* Pink 500 */
+  --color-pink-soft: #FCE7F3;     /* Pink 100 */
+  
+  /* UI Colors */
+  --color-canvas: #F8FAFC;        /* Slate 50 */
+  --color-ink: #0F172A;           /* Slate 900 */
+  --color-muted: #64748B;         /* Slate 500 */
+  --color-line: #E2E8F0;          /* Slate 200 */
+}
+
+/* ---------- Base Reset ---------- */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background-color: #ffffff;
+  color: #0F172A;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Ensure the root fills the screen properly */
+#root {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
