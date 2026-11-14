@@ -566,7 +566,7 @@ export default function LandingPage() {
       <footer className="relative border-t border-gray-200 bg-white/40 py-12 backdrop-blur-md">
         <div className="mx-auto max-w-6xl px-6 grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
           <div className="col-span-1 md:col-span-1">
-            <h2 className="text-2xl font-extrabold tracking-tight mb-4 text-[#202020]">Docsyne<span className="text-violet-600">.</span></h2>
+            <h2 className="text-2xl font-extrabold tracking-tight mb-4 text-[#202020]">Docsyne<span className="text-violet-600"></span></h2>
             <p className="text-sm text-gray-500 leading-relaxed">The real-time collaborative workspace for modern teams. Write, edit, and ship together without the friction.</p>
           </div>
           <div>
