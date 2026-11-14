@@ -21,9 +21,12 @@ export default function Signup() {
       case "email":
         return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()) ? "" : "Enter a valid email address.";
       case "password":
-        return value.length < 8 || !/[A-Za-z]/.test(value) || !/\d/.test(value)
-          ? "Use at least 8 characters with a letter and a number."
-          : "";
+        if (value.length < 8) return "Must be at least 8 characters.";
+        if (!/[A-Z]/.test(value)) return "Must contain a capital letter.";
+        if (!/[a-z]/.test(value)) return "Must contain a small letter.";
+        if (!/\d/.test(value)) return "Must contain a number.";
+        if (!/[!@#$%^&*(),.?":{}|<>]/.test(value)) return "Must contain a special character.";
+        return "";
       case "confirm":
         return value !== all.password ? "Passwords don't match." : "";
       default:
@@ -51,7 +54,6 @@ export default function Signup() {
     e.preventDefault();
     setServerError("");
     
-    // Frontend validation
     const found = {
       name: validate("name", form.name),
       email: validate("email", form.email),
@@ -62,7 +64,6 @@ export default function Signup() {
     setErrors(found);
     if (Object.values(found).some(Boolean)) return;
 
-    // Backend submission
     setSubmitting(true);
     try {
       await API.post("/signup", {
@@ -83,23 +84,66 @@ export default function Signup() {
   };
 
   const rules = [
-    { label: "At least 8 characters", ok: form.password.length >= 8 },
-    { label: "Contains a letter", ok: /[A-Za-z]/.test(form.password) },
-    { label: "Contains a number", ok: /\d/.test(form.password) },
+    { label: "8+ characters", ok: form.password.length >= 8 },
+    { label: "Uppercase", ok: /[A-Z]/.test(form.password) },
+    { label: "Lowercase", ok: /[a-z]/.test(form.password) },
+    { label: "Number", ok: /\d/.test(form.password) },
+    { label: "Special char", ok: /[!@#$%^&*(),.?":{}|<>]/.test(form.password) },
   ];
 
   const inputClass = (error) =>
     `w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none transition-colors placeholder:text-slate-400 focus:ring-4 ${
-      error ? "border-red-400 focus:border-red-500 focus:ring-red-100" : "border-line focus:border-brand focus:ring-brand/15"
+      error ? "border-red-400 focus:border-red-500 focus:ring-red-100" : "border-gray-200 focus:border-violet-500 focus:ring-violet-500/15"
     }`;
 
   return (
-    <div className="grid min-h-screen bg-white font-sans text-ink antialiased lg:grid-cols-2">
-      {/* Form side */}
-      <div className="flex flex-col px-6 py-8 sm:px-12">
+    <div className="grid min-h-screen bg-[#faf9f6] font-sans text-[#202020] antialiased lg:grid-cols-2">
+      
+      {/* LEFT SIDE: Brand Showcase */}
+      <div className="relative isolate hidden overflow-hidden bg-[#faf9f6] lg:block">
+        {/* Matching Landing Page Background */}
+        <div className="pointer-events-none absolute inset-0 -z-10">
+          <div className="absolute -top-40 -left-40 h-96 w-96 rounded-full bg-violet-300/40 blur-3xl" />
+          <div className="absolute top-40 right-0 h-96 w-96 rounded-full bg-emerald-300/30 blur-3xl" />
+          <div className="absolute bottom-0 left-1/3 h-96 w-96 rounded-full bg-blue-300/30 blur-3xl" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,#e5e7eb_1px,transparent_0)] [background-size:26px_26px] opacity-40" />
+        </div>
+
+        <div className="flex h-full flex-col items-center justify-center px-12 text-center">
+          <h2 className="max-w-md text-4xl font-extrabold leading-tight tracking-tight text-[#202020]">
+            Your next great project starts here.
+          </h2>
+          <p className="mt-4 max-w-sm text-gray-600">
+            Create reports, decks, and docs from templates and invite your team in one click.
+          </p>
+
+          <div className="mt-12 w-full max-w-sm rounded-3xl bg-white/50 p-2.5 ring-1 ring-white/70 backdrop-blur-sm">
+            <div className="rounded-2xl border border-gray-100 bg-white p-5 text-left shadow-xl shadow-violet-500/10">
+              <p className="text-sm font-bold">Start from a template</p>
+              <div className="mt-4 space-y-3">
+                {[
+                  { icon: FileText, name: "Q3 Product Roadmap", meta: "Doc · Edited 2h ago" },
+                  { icon: Presentation, name: "Startup Pitch Deck", meta: "Deck · 12 slides" },
+                ].map(({ icon: Icon, name, meta }) => (
+                  <div key={name} className="flex items-center gap-3 rounded-xl border border-gray-100 p-3">
+                    <span className="grid h-9 w-9 place-items-center rounded-lg bg-violet-50 text-violet-600"><Icon size={17} /></span>
+                    <div>
+                      <p className="text-xs font-semibold">{name}</p>
+                      <p className="text-[11px] text-gray-500">{meta}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* RIGHT SIDE: Form */}
+      <div className="flex flex-col bg-white px-6 py-8 sm:px-12">
         <div className="w-fit">
           <Link to="/" className="flex items-center gap-2 text-xl font-extrabold tracking-tight">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-brand to-pink shadow-md">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-600 to-fuchsia-600 shadow-md">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
             </div>
             Docsyne
@@ -108,9 +152,9 @@ export default function Signup() {
 
         <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center py-10">
           <h1 className="text-3xl font-extrabold tracking-tight">Create your account</h1>
-          <p className="mt-2 text-sm text-muted">Start your workspace. It takes less than a minute.</p>
+          <p className="mt-2 text-sm text-gray-500">Start your workspace. It takes less than a minute.</p>
 
-          <form onSubmit={handleSubmit} noValidate className="mt-8 space-y-5">
+          <form onSubmit={handleSubmit} noValidate className="mt-8 space-y-4">
             <div>
               <label htmlFor="name" className="mb-1.5 block text-sm font-semibold">Full name</label>
               <input id="name" name="name" autoComplete="name" placeholder="Riya Sharma" value={form.name} onChange={handleChange} onBlur={handleBlur} className={inputClass(errors.name)} />
@@ -127,27 +171,32 @@ export default function Signup() {
               <label htmlFor="password" className="mb-1.5 block text-sm font-semibold">Password</label>
               <div className="relative">
                 <input id="password" name="password" type={showPw ? "text" : "password"} autoComplete="new-password" placeholder="Create a password" value={form.password} onChange={handleChange} onBlur={handleBlur} className={`${inputClass(errors.password)} pr-11`} />
-                <button type="button" onClick={() => setShowPw(!showPw)} aria-label={showPw ? "Hide password" : "Show password"} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-ink">
+                <button type="button" onClick={() => setShowPw(!showPw)} aria-label={showPw ? "Hide password" : "Show password"} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-800">
                   {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-              {errors.password && <p className="mt-1.5 text-xs font-medium text-red-600">{errors.password}</p>}
               
-              {/* Password Rules */}
-              <ul className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1">
-                {rules.map((r) => (
-                  <li key={r.label} className={`flex items-center gap-1 text-xs font-medium ${r.ok ? "text-emerald-600" : "text-slate-400"}`}>
-                    <Check size={12} strokeWidth={3} /> {r.label}
-                  </li>
-                ))}
-              </ul>
+              {errors.password && form.password.length > 0 ? (
+                <p className="mt-1.5 text-xs font-medium text-red-600">{errors.password}</p>
+              ) : null}
+
+              {form.password.length > 0 && (
+                <ul className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1">
+                  {rules.map((r) => (
+                    <li key={r.label} className={`flex items-center gap-1 text-[11px] font-medium transition-colors duration-200 ${r.ok ? "text-emerald-600" : "text-gray-400"}`}>
+                      <Check size={12} strokeWidth={3} className={r.ok ? "opacity-100" : "opacity-50"} /> 
+                      {r.label}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             <div>
               <label htmlFor="confirm" className="mb-1.5 block text-sm font-semibold">Confirm password</label>
               <div className="relative">
                 <input id="confirm" name="confirm" type={showConfirm ? "text" : "password"} autoComplete="new-password" placeholder="Re-enter your password" value={form.confirm} onChange={handleChange} onBlur={handleBlur} className={`${inputClass(errors.confirm)} pr-11`} />
-                <button type="button" onClick={() => setShowConfirm(!showConfirm)} aria-label={showConfirm ? "Hide password" : "Show password"} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-ink">
+                <button type="button" onClick={() => setShowConfirm(!showConfirm)} aria-label={showConfirm ? "Hide password" : "Show password"} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-800">
                   {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
@@ -155,7 +204,7 @@ export default function Signup() {
             </div>
 
             <div>
-              <label className="flex cursor-pointer items-start gap-2 text-sm text-slate-600">
+              <label className="flex cursor-pointer items-start gap-2 text-sm text-gray-600">
                 <input
                   type="checkbox"
                   checked={agreed}
@@ -163,11 +212,11 @@ export default function Signup() {
                     setAgreed(e.target.checked);
                     if (e.target.checked) setErrors((er) => ({ ...er, terms: "" }));
                   }}
-                  className="mt-0.5 h-4 w-4 rounded border-line accent-brand"
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-violet-600"
                 />
                 <span>
-                  I agree to the <a href="#" className="font-semibold text-brand">Terms</a> and{" "}
-                  <a href="#" className="font-semibold text-brand">Privacy Policy</a>.
+                  I agree to the <a href="#" className="font-semibold text-violet-600">Terms</a> and{" "}
+                  <a href="#" className="font-semibold text-violet-600">Privacy Policy</a>.
                 </span>
               </label>
               {errors.terms && <p className="mt-1.5 text-xs font-medium text-red-600">{errors.terms}</p>}
@@ -175,50 +224,16 @@ export default function Signup() {
 
             {serverError && <p className="text-sm font-medium text-red-600 text-center">{serverError}</p>}
 
-            <button type="submit" disabled={submitting} className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand py-3 text-sm font-semibold text-white shadow-lg shadow-brand/25 transition-colors hover:bg-brand-deep disabled:cursor-not-allowed disabled:opacity-70">
+            <button type="submit" disabled={submitting} className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-violet-600 py-3.5 text-sm font-semibold text-white shadow-lg shadow-violet-600/25 transition-colors hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-70">
               {submitting && <Loader2 size={16} className="animate-spin" />}
               {submitting ? "Creating account..." : "Create Account"}
             </button>
           </form>
 
-          <p className="mt-8 text-center text-sm text-muted">
+          <p className="mt-6 text-center text-sm text-gray-500">
             Already have an account?{" "}
-            <Link to="/login" className="font-semibold text-brand hover:text-brand-deep">Log in</Link>
+            <Link to="/login" className="font-semibold text-violet-600 hover:text-violet-700">Log in</Link>
           </p>
-        </div>
-      </div>
-
-      {/* Brand side */}
-      <div className="relative isolate hidden overflow-hidden bg-white lg:block">
-        <div aria-hidden className="absolute inset-0 -z-10">
-          <div className="absolute left-1/2 top-[-120px] h-[460px] w-[760px] -translate-x-1/2 rounded-full bg-brand/55 blur-[110px]" />
-          <div className="absolute bottom-[-100px] left-[-120px] h-[420px] w-[480px] rounded-full bg-sky-300/60 blur-[110px]" />
-          <div className="absolute bottom-[-60px] right-[-120px] h-[460px] w-[520px] rounded-full bg-pink/45 blur-[110px]" />
-        </div>
-
-        <div className="flex h-full flex-col items-center justify-center px-12 text-center">
-          <h2 className="max-w-md text-4xl font-extrabold leading-tight tracking-tight">Your next great project starts here.</h2>
-          <p className="mt-4 max-w-sm text-slate-600">Create reports, decks, and docs from templates and invite your team in one click.</p>
-
-          <div className="mt-12 w-full max-w-sm rounded-3xl bg-white/50 p-2.5 ring-1 ring-white/70 backdrop-blur-sm">
-            <div className="rounded-2xl border border-line bg-white p-5 text-left shadow-xl shadow-brand/10">
-              <p className="text-sm font-bold">Start from a template</p>
-              <div className="mt-4 space-y-3">
-                {[
-                  { icon: FileText, name: "Q3 Product Roadmap", meta: "Doc · Edited 2h ago" },
-                  { icon: Presentation, name: "Startup Pitch Deck", meta: "Deck · 12 slides" },
-                ].map(({ icon: Icon, name, meta }) => (
-                  <div key={name} className="flex items-center gap-3 rounded-xl border border-line p-3">
-                    <span className="grid h-9 w-9 place-items-center rounded-lg bg-brand-light text-brand"><Icon size={17} /></span>
-                    <div>
-                      <p className="text-xs font-semibold">{name}</p>
-                      <p className="text-[11px] text-muted">{meta}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
