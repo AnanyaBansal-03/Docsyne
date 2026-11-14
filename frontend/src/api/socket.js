@@ -6,17 +6,17 @@ let socket = null;
 export const connectSocket = () => {
   if (!socket) {
     const token = localStorage.getItem("token");
-    socket = io("http://localhost:5000", {
+    const backendUrl = import.meta.env.VITE_API_URL 
+      ? import.meta.env.VITE_API_URL.replace("/api", "") 
+      : "http://localhost:5000";
+    
+    socket = io(backendUrl, {
       auth: { token },
+      transports: ["websocket", "polling"],
     });
 
-    socket.on("connect", () => {
-      console.log("✅ Socket connected:", socket.id);
-    });
-
-    socket.on("connect_error", (err) => {
-      console.error("❌ Socket error:", err.message);
-    });
+    socket.on("connect", () => console.log("✅ Socket connected:", socket.id));
+    socket.on("connect_error", (err) => console.error("❌ Socket error:", err.message));
   }
   return socket;
 };
