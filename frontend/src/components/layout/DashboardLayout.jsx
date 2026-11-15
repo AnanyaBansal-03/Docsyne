@@ -18,7 +18,8 @@ export default function DashboardLayout() {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex flex-1 flex-col overflow-hidden gap-4">
+      {/* 🆕 changed overflow-hidden to overflow-visible so notifications don't clip */}
+      <div className="flex flex-1 flex-col overflow-visible gap-4">
         {/* Floating Topbar */}
         <Topbar />
         

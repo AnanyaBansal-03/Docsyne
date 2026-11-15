@@ -100,7 +100,7 @@ export default function LandingPage() {
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-fuchsia-600 shadow-lg shadow-violet-600/30 transition-transform group-hover:scale-105">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
             </div>
-            <h2 className="text-2xl font-extrabold tracking-tight text-[#202020]">Docsyne<span className="text-violet-600">.</span></h2>
+            <h2 className="text-2xl font-extrabold tracking-tight text-[#202020]">Docsyne<span className="text-violet-600"></span></h2>
           </Link>
 
           <div className="hidden items-center gap-8 md:flex">

@@ -133,7 +133,6 @@ export default function DocumentEditor() {
       socket.off("comment-added");
       socket.off("comment-updated");
       socket.off("comment-deleted");
-      disconnectSocket();
     };
   }, [id, initialContent]);
 
@@ -373,20 +372,25 @@ export default function DocumentEditor() {
           )}
 
           {liveUsers.length > 0 && (
-            <div className="flex items-center gap-2">
-              {liveUsers.map((u) => (
-                <div key={u.id} className="flex items-center gap-1.5">
-                  <div
-                    className="flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold text-white shadow-sm"
-                    style={{ background: u.color }}
-                    title={u.name}
-                  >
-                    {u.initial}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+  <div className="flex items-center gap-2">
+    {liveUsers.map((u) => (
+      <div key={u.id} className="group relative">
+        <div
+          className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-[10px] font-bold text-white shadow-sm transition-transform hover:scale-110"
+          style={{ background: u.color }}
+        >
+          {u.initial}
+        </div>
+        
+        {/* 🆕 Custom hover tooltip */}
+        <div className="pointer-events-none absolute left-1/2 top-full mt-1 z-50 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2.5 py-1 text-[10px] font-semibold text-white opacity-0 shadow-lg transition-opacity duration-200 group-hover:opacity-100">
+          {u.name}
+          <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-[5px] border-transparent border-b-gray-900" />
+        </div>
+      </div>
+    ))}
+  </div>
+)}
 
           {/* History Button */}
           <button

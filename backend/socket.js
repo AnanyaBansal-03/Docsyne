@@ -5,8 +5,14 @@ const User = require("./models/User");
 
 const initSocket = (server) => {
   const io = new Server(server, {
-    cors: { origin: "http://localhost:5173", credentials: true },
+    cors: {
+      origin: process.env.FRONTEND_URL || "http://localhost:5173",
+      credentials: true,
+    },
   });
+
+  // 🆕 Map to store userId -> socketId
+  const userSocketMap = new Map();
 
   io.use(async (socket, next) => {
     try {
@@ -16,6 +22,10 @@ const initSocket = (server) => {
       const user = await User.findById(decoded.id).select("name email");
       if (!user) return next(new Error("User not found"));
       socket.user = user;
+
+      // 🆕 Store the mapping when the socket connects
+      userSocketMap.set(user._id.toString(), socket.id);
+
       next();
     } catch (err) {
       next(new Error("Authentication failed"));
@@ -62,7 +72,7 @@ const initSocket = (server) => {
       });
     });
 
-    // 🆕 COMMENT EVENTS — BROADCAST TO OTHER USERS IN THE ROOM
+    // COMMENT EVENTS
     socket.on("comment-added", ({ documentId, comment }) => {
       console.log(`📝 Comment added to ${documentId}:`, comment.text);
       socket.to(documentId).emit("comment-added", { comment });
@@ -79,6 +89,11 @@ const initSocket = (server) => {
     });
 
     socket.on("disconnect", () => {
+      // 🆕 Remove user from the socket map when they disconnect
+      if (socket.user) {
+        userSocketMap.delete(socket.user._id.toString());
+      }
+
       Object.keys(docUsers).forEach((docId) => {
         docUsers[docId] = docUsers[docId].filter((u) => u.id !== socket.id);
         io.to(docId).emit("room-users", docUsers[docId]);
@@ -89,6 +104,22 @@ const initSocket = (server) => {
       });
     });
   });
+
+  // 🆕 Helper function to send notifications to a specific user
+  // backend/socket.js (replace just the sendNotificationToUser helper)
+
+io.sendNotificationToUser = (userId, notification) => {
+  const socketId = userSocketMap.get(userId.toString());
+  console.log(`📬 sendNotificationToUser called for: ${userId}`);
+  console.log(`🔌 Found socket: ${socketId || "❌ NOT CONNECTED"}`);
+
+  if (socketId) {
+    io.to(socketId).emit("new-notification", notification);
+    console.log(`✅ Notification emitted to socket ${socketId}`);
+  } else {
+    console.log(`❌ No active socket for user ${userId}`);
+  }
+};
 
   return io;
 };

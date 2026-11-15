@@ -1,13 +1,12 @@
 // backend/controllers/documentController.js
 const Document = require("../models/Document");
 const Workspace = require("../models/Workspace");
+const User = require("../models/User");
+const mongoose = require("mongoose"); // Needed for instant notification ID
 
 // Helper: check if user has access to a document
 const hasAccessToDocument = async (doc, userId) => {
-  // Owner check
   if (doc.owner.toString() === userId.toString()) return true;
-
-  // Workspace member check
   if (doc.workspaceId) {
     const workspace = await Workspace.findById(doc.workspaceId);
     if (workspace) {
@@ -20,7 +19,6 @@ const hasAccessToDocument = async (doc, userId) => {
 };
 
 // @route  POST /api/documents
-// @desc   Create a new document
 const createDocument = async (req, res) => {
   try {
     const { title, type, workspaceId } = req.body;
@@ -37,6 +35,34 @@ const createDocument = async (req, res) => {
       slides: initialSlides,
     });
 
+    // 🆕 SHARE NOTIFICATION
+    if (workspaceId) {
+      const workspace = await Workspace.findById(workspaceId).populate("members.user");
+      const io = req.app.get("io");
+
+      if (workspace) {
+        for (const member of workspace.members) {
+          if (member.user && member.user._id.toString() !== req.user._id.toString()) {
+            const notification = {
+              _id: new mongoose.Types.ObjectId(),
+              type: "share",
+              message: `${req.user.name} created a new ${type} "${doc.title}" in "${workspace.name}"`,
+              relatedId: doc._id.toString(),
+              read: false,
+              createdAt: new Date(),
+            };
+            
+            member.user.notifications.push(notification);
+            await member.user.save();
+
+            if (io) {
+              io.sendNotificationToUser(member.user._id, notification);
+            }
+          }
+        }
+      }
+    }
+
     res.status(201).json(doc);
   } catch (error) {
     console.error("Create Doc Error:", error);
@@ -45,11 +71,9 @@ const createDocument = async (req, res) => {
 };
 
 // @route  GET /api/documents
-// @desc   Get all documents the user can access (owned + workspace member)
 const getMyDocuments = async (req, res) => {
   try {
     const { workspaceId } = req.query;
-
     const userWorkspaces = await Workspace.find({
       "members.user": req.user._id,
     }).select("_id");
@@ -69,10 +93,9 @@ const getMyDocuments = async (req, res) => {
       delete filter.$or;
     }
 
-    // 🚨 THIS LINE IS CRITICAL
     const docs = await Document.find(filter)
-      .populate("workspaceId", "name color")   // <-- MUST EXIST
-      .populate("owner", "name email")  
+      .populate("workspaceId", "name color")
+      .populate("owner", "name email")
       .sort({ updatedAt: -1 });
 
     res.json(docs);
@@ -83,16 +106,13 @@ const getMyDocuments = async (req, res) => {
 };
 
 // @route  PATCH /api/documents/:id
-// @desc   Update document (owner OR workspace member)
 const updateDocument = async (req, res) => {
   try {
     const doc = await Document.findById(req.params.id);
     if (!doc) return res.status(404).json({ message: "Document not found" });
 
     const hasAccess = await hasAccessToDocument(doc, req.user._id);
-    if (!hasAccess) {
-      return res.status(403).json({ message: "Access denied" });
-    }
+    if (!hasAccess) return res.status(403).json({ message: "Access denied" });
 
     if (req.body.title !== undefined) doc.title = req.body.title;
     if (req.body.isFavorite !== undefined) doc.isFavorite = req.body.isFavorite;
@@ -109,13 +129,11 @@ const updateDocument = async (req, res) => {
 };
 
 // @route  DELETE /api/documents/:id
-// @desc   Permanently delete a document (owner only)
 const deleteDocument = async (req, res) => {
   try {
     const doc = await Document.findById(req.params.id);
     if (!doc) return res.status(404).json({ message: "Document not found" });
 
-    // Only owner can delete permanently
     if (doc.owner.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: "Only the owner can delete this document" });
     }
@@ -129,16 +147,13 @@ const deleteDocument = async (req, res) => {
 };
 
 // @route  GET /api/documents/:id
-// @desc   Get a single document (owner OR workspace member)
 const getDocumentById = async (req, res) => {
   try {
     const doc = await Document.findById(req.params.id);
     if (!doc) return res.status(404).json({ message: "Document not found" });
 
     const hasAccess = await hasAccessToDocument(doc, req.user._id);
-    if (!hasAccess) {
-      return res.status(403).json({ message: "Access denied" });
-    }
+    if (!hasAccess) return res.status(403).json({ message: "Access denied" });
 
     res.json(doc);
   } catch (error) {
@@ -148,11 +163,9 @@ const getDocumentById = async (req, res) => {
 };
 
 // @route  POST /api/documents/template
-// @desc   Create a document from a pre-defined template
 const createFromTemplate = async (req, res) => {
   try {
     const { templateId, title, workspaceId } = req.body;
-
     let content = "";
     let slides = [];
 
@@ -188,7 +201,6 @@ const createFromTemplate = async (req, res) => {
 };
 
 // @route  POST /api/documents/:id/comments
-// @desc   Add a comment to a document
 const addComment = async (req, res) => {
   try {
     const doc = await Document.findById(req.params.id);
@@ -210,7 +222,30 @@ const addComment = async (req, res) => {
     doc.comments.push(newComment);
     await doc.save();
 
-    // Return the newly created comment (last item in array)
+    // 🆕 COMMENT NOTIFICATION + REAL-TIME EMIT
+    if (doc.owner.toString() !== req.user._id.toString()) {
+      const docOwner = await User.findById(doc.owner);
+      if (docOwner) {
+        const notification = {
+          _id: new mongoose.Types.ObjectId(),
+          type: "comment",
+          message: `${req.user.name} commented on your document "${doc.title}"`,
+          relatedId: doc._id.toString(),
+          read: false,
+          createdAt: new Date(),
+        };
+        docOwner.notifications.push(notification);
+        await docOwner.save();
+
+        // 🆕 EMIT REAL-TIME NOTIFICATION
+        const io = req.app.get("io");
+        if (io) {
+          io.sendNotificationToUser(docOwner._id, notification);
+          console.log("📨 Sent real-time comment notification to:", docOwner.name);
+        }
+      }
+    }
+
     const createdComment = doc.comments[doc.comments.length - 1];
     res.status(201).json(createdComment);
   } catch (error) {
@@ -220,7 +255,6 @@ const addComment = async (req, res) => {
 };
 
 // @route  PATCH /api/documents/:id/comments/:commentId
-// @desc   Resolve or reply to a comment
 const updateComment = async (req, res) => {
   try {
     const doc = await Document.findById(req.params.id);
@@ -232,12 +266,10 @@ const updateComment = async (req, res) => {
     const comment = doc.comments.id(req.params.commentId);
     if (!comment) return res.status(404).json({ message: "Comment not found" });
 
-    // Handle resolve
     if (req.body.resolved !== undefined) {
       comment.resolved = req.body.resolved;
     }
 
-    // Handle reply
     if (req.body.reply) {
       comment.replies.push({
         text: req.body.reply,
@@ -255,30 +287,21 @@ const updateComment = async (req, res) => {
 };
 
 // @route  DELETE /api/documents/:id/comments/:commentId
-// @desc   Delete a comment
-// @route  DELETE /api/documents/:id/comments/:commentId
-// @desc   Delete a comment (author OR document owner only)
 const deleteComment = async (req, res) => {
   try {
     const doc = await Document.findById(req.params.id);
     if (!doc) return res.status(404).json({ message: "Document not found" });
 
     const hasAccess = await hasAccessToDocument(doc, req.user._id);
-    if (!hasAccess) {
-      return res.status(403).json({ message: "Access denied" });
-    }
+    if (!hasAccess) return res.status(403).json({ message: "Access denied" });
 
     const comment = doc.comments.id(req.params.commentId);
     if (!comment) return res.status(404).json({ message: "Comment not found" });
 
-    // Handle both populated and non-populated owner
-    const ownerId = typeof doc.owner === "object" 
-      ? doc.owner._id.toString() 
-      : doc.owner.toString();
+    const ownerId = typeof doc.owner === "object" ? doc.owner._id.toString() : doc.owner.toString();
     const isAuthor = comment.author.toString() === req.user._id.toString();
     const isOwner = ownerId === req.user._id.toString();
 
-    // Rule A: Only author OR document owner can delete
     if (!isAuthor && !isOwner) {
       return res.status(403).json({ message: "Not authorized to delete this comment" });
     }
@@ -293,7 +316,6 @@ const deleteComment = async (req, res) => {
 };
 
 // @route  POST /api/documents/:id/versions
-// @desc   Create a snapshot of the current document
 const createVersion = async (req, res) => {
   try {
     const doc = await Document.findById(req.params.id);
@@ -311,7 +333,6 @@ const createVersion = async (req, res) => {
       savedAt: new Date(),
     };
 
-    // Keep only the last 20 versions (oldest removed first)
     doc.versions.push(newVersion);
     if (doc.versions.length > 20) {
       doc.versions = doc.versions.slice(-20);
@@ -326,7 +347,6 @@ const createVersion = async (req, res) => {
 };
 
 // @route  GET /api/documents/:id/versions
-// @desc   Get all versions of a document
 const getVersions = async (req, res) => {
   try {
     const doc = await Document.findById(req.params.id);
@@ -335,7 +355,6 @@ const getVersions = async (req, res) => {
     const hasAccess = await hasAccessToDocument(doc, req.user._id);
     if (!hasAccess) return res.status(403).json({ message: "Access denied" });
 
-    // Return versions sorted newest first
     const versions = [...doc.versions].reverse();
     res.json(versions);
   } catch (error) {
@@ -345,7 +364,6 @@ const getVersions = async (req, res) => {
 };
 
 // @route  POST /api/documents/:id/versions/:versionId/restore
-// @desc   Restore a specific version
 const restoreVersion = async (req, res) => {
   try {
     const doc = await Document.findById(req.params.id);
@@ -357,7 +375,6 @@ const restoreVersion = async (req, res) => {
     const version = doc.versions.id(req.params.versionId);
     if (!version) return res.status(404).json({ message: "Version not found" });
 
-    // Create a snapshot of the CURRENT state before restoring
     doc.versions.push({
       content: doc.content,
       slides: doc.slides,
@@ -367,12 +384,10 @@ const restoreVersion = async (req, res) => {
       savedAt: new Date(),
     });
 
-    // Restore the version
     doc.content = version.content || "";
     doc.slides = version.slides || [];
     doc.title = version.title || doc.title;
 
-    // Keep only the last 20
     if (doc.versions.length > 20) {
       doc.versions = doc.versions.slice(-20);
     }
@@ -386,7 +401,6 @@ const restoreVersion = async (req, res) => {
 };
 
 // @route  DELETE /api/documents/:id/versions/:versionId
-// @desc   Delete a specific version
 const deleteVersion = async (req, res) => {
   try {
     const doc = await Document.findById(req.params.id);
@@ -417,8 +431,8 @@ module.exports = {
   addComment,
   updateComment,
   deleteComment,
-  createVersion,      // 🆕
-  getVersions,        // 🆕
-  restoreVersion,     // 🆕
+  createVersion,
+  getVersions,
+  restoreVersion,
   deleteVersion,
 };

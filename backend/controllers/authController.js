@@ -85,4 +85,45 @@ const getMe = async (req, res) => {
   res.json(req.user);
 };
 
-module.exports = { signup, login, getMe };
+// 🆕 @route  GET /api/me/notifications
+// @desc   Get logged-in user's notifications (newest first)
+// @access Private
+const getMyNotifications = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select("notifications");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    // Sort newest first
+    const sorted = [...user.notifications].sort(
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+    );
+    res.json(sorted);
+  } catch (error) {
+    console.error("Get Notifications Error:", error.message);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// 🆕 @route  PATCH /api/me/notifications/read
+// @desc   Mark all notifications as read
+// @access Private
+const markNotificationsRead = async (req, res) => {
+  try {
+    await User.findByIdAndUpdate(req.user._id, {
+      $set: { "notifications.$[].read": true },
+    });
+    res.json({ message: "Notifications marked as read" });
+  } catch (error) {
+    console.error("Mark Notifications Read Error:", error.message);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+module.exports = {
+  signup,
+  login,
+  getMe,
+  getMyNotifications,
+  markNotificationsRead,
+};
